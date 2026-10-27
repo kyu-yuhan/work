@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>대학 근로부서 예산관리 시스템 (2학기 전용)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f8fafc}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+<div id="toast" class="fixed bottom-5 right-5 z-50 transition-all duration-300 translate-y-20 opacity-0 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+  <i id="toast-icon" class="fas fa-info-circle text-blue-400"></i><span id="toast-msg" class="text-sm font-medium"></span>
+</div>
+
+<header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
+  <div class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center"><i class="fas fa-university"></i></div>
+      <div><h1 class="font-bold text-lg leading-tight">대학 근로부서 예산관리</h1><p class="text-xs text-slate-400">2학기 전용 근로 예산 및 잔액 관리</p></div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div id="user-badge" class="hidden sm:flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-slate-300">
+        <span id="role-pill" class="px-2 py-0.5 rounded text-[10px] font-semibold"></span><span id="user-display-name"></span>
+      </div>
+      <button id="logout-btn" onclick="logout()" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-700"><i class="fas fa-sign-out-alt mr-1"></i>로그아웃</button>
+    </div>
+  </div>
+</header>
+
+<main class="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
+
+<!-- LOGIN SECTION -->
+<div id="login-section" class="max-w-md mx-auto my-12 bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+  <div class="text-center mb-8">
+    <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100"><i class="fas fa-user-shield text-blue-600 text-2xl"></i></div>
+    <h2 class="text-2xl font-bold">시스템 로그인</h2>
+    <p class="text-sm text-slate-500 mt-1">담당 학과 또는 관리자 권한을 선택하세요.</p>
+  </div>
+  <div class="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-xl mb-6 text-sm font-semibold">
+    <button type="button" id="tab-dept-btn" onclick="switchLoginTab('dept')" class="py-2.5 rounded-lg bg-white text-blue-600 shadow-sm">학과 담당자</button>
+    <button type="button" id="tab-admin-btn" onclick="switchLoginTab('admin')" class="py-2.5 rounded-lg text-slate-600">총괄 관리자</button>
+  </div>
+  <form id="dept-login-form" onsubmit="handleDeptLogin(event)" class="space-y-4">
+    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">소속 학과 선택</label>
+      <select id="login-dept-select" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-slate-50"></select></div>
+    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">비밀번호</label>
+      <input type="password" id="login-dept-pw" required placeholder="비밀번호: 1234" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"></div>
+    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-sm"><i class="fas fa-sign-in-alt mr-1"></i>학과 로그인</button>
+  </form>
+  <form id="admin-login-form" onsubmit="handleAdminLogin(event)" class="space-y-4 hidden">
+    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">관리자 아이디</label>
+      <input type="text" id="login-admin-id" value="admin" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-slate-50"></div>
+    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">관리자 비밀번호</label>
+      <input type="password" id="login-admin-pw" required placeholder="비밀번호: admin1234" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"></div>
+    <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-xl text-sm"><i class="fas fa-lock mr-1"></i>관리자 로그인</button>
+  </form>
+  <p class="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-400">* 학과 비밀번호: <span class="font-mono text-slate-600">1234</span> | 관리자: <span class="font-mono text-slate-600">admin / admin1234</span></p>
+</div>
+
+<!-- DASHBOARD SECTION -->
+<div id="dashboard-section" class="hidden space-y-6">
+  <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="flex items-center gap-2 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs">
+        <i class="fas fa-graduation-cap text-slate-500"></i><span class="font-semibold text-slate-600">학년도:</span>
+        <select id="global-year-select" onchange="changeYear(this.value)" class="bg-transparent font-bold focus:outline-none">
+          <option value="2026">2026학년도</option><option value="2027">2027학년도</option></select></div>
+      <div class="flex items-center gap-2 bg-slate-100 border border-slate-300 rounded-xl px-3 py-1.5 text-xs">
+        <i class="fas fa-bookmark text-blue-600"></i><span class="font-bold text-slate-700">2학기 (9월~2월)</span></div>
+      <div class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-1.5 text-xs">
+        <i class="far fa-calendar-alt text-blue-600"></i><span class="font-bold text-blue-900">근무 월:</span>
+        <select id="global-month-select" onchange="changeMonth(this.value)" class="bg-transparent text-blue-900 font-bold focus:outline-none">
+          <option value="9월">9월</option><option value="10월">10월</option><option value="11월">11월</option>
+          <option value="12월">12월</option><option value="1월">1월</option><option value="2월">2월</option>
+        </select></div>
+    </div>
+    <div class="flex items-center gap-3 text-xs">
+      <span class="text-slate-500">기준 시급: <strong id="global-hourly-wage-display" class="text-slate-800">10,320원</strong></span>
+      <button onclick="resetDataConfirmation()" class="text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200"><i class="fas fa-undo-alt mr-1"></i>데이터 초기화</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"><span class="text-xs font-bold text-slate-500">2학기 배정예산 (C열)</span>
+      <div id="stat-total-budget" class="text-2xl font-extrabold mt-2">0 원</div></div>
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"><span class="text-xs font-bold text-blue-600"><span class="mon-t">9월</span> 나갈 금액 (F열)</span>
+      <div id="stat-monthly-pay" class="text-2xl font-extrabold text-blue-600 mt-2">0 원</div></div>
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"><span class="text-xs font-bold text-amber-600">학기 누적 지출액 (G열)</span>
+      <div id="stat-spent-so-far" class="text-2xl font-extrabold mt-2">0 원</div></div>
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"><span class="text-xs font-bold text-emerald-600">지급 후 남은 잔액 (H열)</span>
+      <div id="stat-remaining-balance" class="text-2xl font-extrabold text-emerald-600 mt-2">0 원</div></div>
+  </div>
+
+  <!-- DEPT VIEW -->
+  <div id="dept-view-container" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
+      <div><h2 class="text-lg font-bold flex items-center gap-2"><i class="fas fa-edit text-blue-600"></i><span id="dept-panel-title"></span></h2>
+        <p class="text-xs text-slate-500 mt-0.5"><span class="mon-t font-semibold text-blue-600">9월</span> 근무시간을 입력하세요.</p></div>
+      <span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">학과 전용 모드</span>
+    </div>
+    <form id="dept-input-form" onsubmit="saveDeptHours(event)" class="p-6 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200"><span class="text-xs font-semibold text-slate-500 block mb-1">배정 예산 (C열)</span><div id="dept-card-budget" class="text-xl font-bold"></div></div>
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200"><span class="text-xs font-semibold text-slate-500 block mb-1">학기 누적 지출액 (G열)</span><div id="dept-card-spent" class="text-xl font-bold text-slate-700"></div></div>
+        <div class="bg-blue-50 p-4 rounded-xl border border-blue-200"><label class="text-xs font-bold text-blue-900 block mb-1"><span class="mon-t">9월</span> 근무시간 (E열)</label>
+          <input type="number" id="dept-hours-input" step="0.5" min="0" max="744" required oninput="calculateDeptPreview()" class="w-full px-3.5 py-2 rounded-lg border border-blue-300 font-bold text-lg text-blue-900"></div>
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200"><span class="text-xs font-semibold text-slate-500 block mb-1">이번달 나갈 금액 (F열)</span><div id="dept-card-monthly-pay" class="text-xl font-bold text-blue-600"></div></div>
+      </div>
+      <div class="p-4 rounded-xl border bg-slate-50 border-slate-200 space-y-3">
+        <div class="flex justify-between items-center text-sm font-semibold"><span><i class="fas fa-chart-line text-blue-600 mr-1"></i>지급 후 잔액 (H열)</span><span id="dept-card-balance" class="text-lg font-bold text-emerald-600"></span></div>
+        <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden"><div id="dept-budget-progress" class="bg-blue-600 h-3 rounded-full transition-all duration-500" style="width:0%"></div></div>
+        <div class="flex justify-between text-xs text-slate-500"><span>집행률: <strong id="dept-usage-percent" class="text-slate-800">0%</strong></span>
+          <span id="dept-warning-text" class="text-rose-600 font-bold hidden"><i class="fas fa-exclamation-triangle"></i> 예산 초과 경고!</span></div>
+      </div>
+      <div class="flex justify-end"><button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-xl text-sm"><i class="fas fa-save mr-1"></i><span class="mon-t">9월</span> 근무시간 저장</button></div>
+    </form>
+  </div>
+
+  <!-- ADMIN VIEW -->
+  <div id="admin-view-container" class="hidden space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-2"><span class="px-3 py-1 bg-slate-900 text-white text-xs font-bold rounded-lg"><i class="fas fa-user-cog mr-1"></i>총괄 관리자 모드</span></div>
+      <div class="flex items-center gap-2">
+        <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold"><i class="fas fa-file-excel mr-1"></i>엑셀/CSV 다운로드</button>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+        <input type="text" id="dept-search-input" oninput="renderAdminTable()" placeholder="학과명 검색..." class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs w-48">
+        <div class="text-xs text-slate-500">총 <strong id="table-dept-count" class="text-slate-800">39</strong>개 학과</div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead><tr class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+            <th class="p-3.5">학과명</th>
+            <th class="p-3.5 text-right">예산 (C열)</th>
+            <th class="p-3.5 text-center">시급 (D열)</th>
+            <th class="p-3.5 text-center"><span class="mon-t">9월</span> 근무시간 (E열)</th>
+            <th class="p-3.5 text-right"><span class="mon-t">9월</span> 나갈 금액 (F열)</th>
+            <th class="p-3.5 text-right">누적 지출 (G열)</th>
+            <th class="p-3.5 text-right">잔액 (H열)</th>
+            <th class="p-3.5 text-center">집행률</th>
+          </tr></thead>
+          <tbody id="admin-table-body" class="divide-y divide-slate-100 font-medium text-slate-700"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+
+<script>
+const VERSION = 3, STORE_KEY = 'university_work_study_state_v3';
+const SEMESTER_MONTHS = ["9월","10월","11월","12월","1월","2월"];
+const INITIAL_DEPARTMENTS = [
+  {id:"dept_1",name:"기계공학과 기계공학전공",budget:3800000,spent:536640},
+  {id:"dept_2",name:"전기공학과 전기공학전공",budget:3800000,spent:701760},
+  {id:"dept_3",name:"전기공학과 전자공학전공",budget:1900000,spent:350880},
+  {id:"dept_4",name:"안전소방학과 산업안전전공",budget:1100000,spent:185760},
+  {id:"dept_5",name:"멀티디자인학과 산업디자인전공",budget:3500000,spent:1228080},
+  {id:"dept_6",name:"컴퓨터공학과 컴퓨터소프트웨어전공",budget:4600000,spent:835920},
+  {id:"dept_7",name:"기계공학과 소방설비안전전공",budget:2700000,spent:361200},
+  {id:"dept_8",name:"멀티디자인학과 시각디자인전공",budget:5700000,spent:897840},
+  {id:"dept_9",name:"식품영양학과",budget:2700000,spent:485040},
+  {id:"dept_10",name:"글로벌관광학과 호텔관광전공",budget:2700000,spent:464400},
+  {id:"dept_11",name:"글로벌관광학과 일본비즈니스전공",budget:2700000,spent:237360},
+  {id:"dept_12",name:"경영학과 경영정보전공",budget:2200000,spent:0},
+  {id:"dept_13",name:"보건의료행정학과",budget:5700000,spent:712080},
+  {id:"dept_14",name:"IT정보통신학과 컴퓨터정보통신전공",budget:1300000,spent:61920},
+  {id:"dept_15",name:"방송미디어학과 애니메이션웹툰전공",budget:5400000,spent:1062960},
+  {id:"dept_16",name:"생활디자인학과 패션디자인전공",budget:5100000,spent:1083600},
+  {id:"dept_17",name:"생활디자인학과 실내건축전공",budget:4900000,spent:949440},
+  {id:"dept_18",name:"컴퓨터공학과 인공지능전공",budget:1900000,spent:319920},
+  {id:"dept_19",name:"컴퓨터공학과 게임콘텐츠전공",budget:1300000,spent:495360},
+  {id:"dept_20",name:"건강웰니스학과 사회복지전공",budget:4600000,spent:288960},
+  {id:"dept_21",name:"호텔외식조리학과 호텔조리전공",budget:3300000,spent:423120},
+  {id:"dept_22",name:"사회서비스학과 아동보육전공",budget:500000,spent:237360},
+  {id:"dept_23",name:"경영학과 세무회계전공",budget:1900000,spent:774000},
+  {id:"dept_24",name:"방송미디어학과 광고미디어전공",budget:2200000,spent:278640},
+  {id:"dept_25",name:"유한생명바이오학과 유한바이오전공",budget:5400000,spent:1279680},
+  {id:"dept_26",name:"의료뷰티학과 피부메이크업전공",budget:1900000,spent:577920},
+  {id:"dept_27",name:"의료뷰티학과 뷰티화장품전공",budget:1400000,spent:340560},
+  {id:"dept_28",name:"호텔외식조리학과 카페베이커리전공",budget:3300000,spent:402480},
+  {id:"dept_29",name:"방송미디어학과 방송영상전공",budget:3000000,spent:743040},
+  {id:"dept_30",name:"방송예술학과 문예창작전공",budget:2500000,spent:660480},
+  {id:"dept_31",name:"유한생명바이오학과 유한생명회계전공",budget:1400000,spent:0},
+  {id:"dept_32",name:"반려동물보건학과",budget:2200000,spent:732720},
+  {id:"dept_33",name:"건강웰니스학과 스포츠재활전공",budget:3800000,spent:1217760},
+  {id:"dept_34",name:"작업치료과",budget:1700000,spent:227040},
+  {id:"dept_35",name:"방송예술학과 방송연예전공",budget:1800000,spent:495360},
+  {id:"dept_36",name:"응급구조과",budget:2200000,spent:794640},
+  {id:"dept_37",name:"건강웰니스학과 반려동물산업전공",budget:2500000,spent:433440},
+  {id:"dept_38",name:"항공서비스학과",budget:2700000,spent:361200},
+  {id:"dept_39",name:"치위생과",budget:900000,spent:103200}
+];
+
+let state = {};
+let currentUser = null;
+
+const fmt = n => new Intl.NumberFormat('ko-KR').format(Math.round(n));
+const KRW = v => fmt(v) + ' 원';
+const $ = id => document.getElementById(id);
+const setAll = (cls, text) => document.querySelectorAll('.' + cls).forEach(e => e.textContent = text);
+
+function showToast(msg, type = "info") {
+  $('toast-msg').textContent = msg;
+  const t = $('toast'); t.classList.remove('translate-y-20', 'opacity-0');
+  setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 3000);
+}
+
+function saveState() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+}
+
+function initDefaultState() {
+  state = { version: VERSION, hourlyWage: 10320, selectedYear: "2026", selectedMonth: "9월", departments: INITIAL_DEPARTMENTS };
+  saveState();
+}
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (s && s.version === VERSION) { state = s; return; }
+  } catch(e) {}
+  initDefaultState();
+}
+
+function calc(dept) {
+  const m = state.selectedMonth;
+  const hours = dept.monthlyHours?.[m] || 0;
+  const pay = hours * state.hourlyWage;
+  
+  // 누적 지출액 계산
+  let prevPay = 0;
+  const currIdx = SEMESTER_MONTHS.indexOf(m);
+  for(let i=0; i<currIdx; i++) {
+    prevPay += (dept.monthlyHours?.[SEMESTER_MONTHS[i]] || 0) * state.hourlyWage;
+  }
+  const spent = (dept.spent || 0) + prevPay;
+  const balance = dept.budget - spent - pay;
+  const pct = dept.budget > 0 ? ((spent + pay) / dept.budget) * 100 : 0;
+  return { budget: dept.budget, hours, pay, spent, balance, pct };
+}
+
+function switchLoginTab(tab) {
+  $('dept-login-form').classList.toggle('hidden', tab !== 'dept');
+  $('admin-login-form').classList.toggle('hidden', tab === 'dept');
+  $('tab-dept-btn').className = "py-2.5 rounded-lg " + (tab === 'dept' ? "bg-white text-blue-600 shadow-sm" : "text-slate-600");
+  $('tab-admin-btn').className = "py-2.5 rounded-lg " + (tab !== 'dept' ? "bg-slate-900 text-white shadow-sm" : "text-slate-600");
+}
+
+function populateDeptSelect() {
+  const sel = $('login-dept-select'); sel.innerHTML = '';
+  state.departments.forEach(d => {
+    const o = document.createElement('option'); o.value = d.id; o.textContent = d.name; sel.appendChild(o);
+  });
+}
+
+function handleDeptLogin(e) {
+  e.preventDefault();
+  if ($('login-dept-pw').value !== '1234') return showToast("비밀번호가 올바르지 않습니다.", "error");
+  currentUser = { role: 'dept', deptId: $('login-dept-select').value };
+  enterDashboard();
+}
+
+function handleAdminLogin(e) {
+  e.preventDefault();
+  if ($('login-admin-pw').value !== 'admin1234') return showToast("비밀번호가 올바르지 않습니다.", "error");
+  currentUser = { role: 'admin' };
+  enterDashboard();
+}
+
+function enterDashboard() {
+  $('login-section').classList.add('hidden'); $('dashboard-section').classList.remove('hidden');
+  $('logout-btn').classList.remove('hidden'); $('user-badge').classList.remove('hidden');
+  updateUI();
+}
+
+function logout() {
+  currentUser = null;
+  $('login-section').classList.remove('hidden'); $('dashboard-section').classList.add('hidden');
+  $('logout-btn').classList.add('hidden'); $('user-badge').classList.add('hidden');
+}
+
+function changeYear(v) { state.selectedYear = v; saveState(); updateUI(); }
+function changeMonth(v) { state.selectedMonth = v; saveState(); updateUI(); }
+
+function updateUI() {
+  setAll('mon-t', state.selectedMonth);
+  if (!currentUser) return;
+
+  if (currentUser.role === 'admin') {
+    $('user-display-name').textContent = "총괄 관리자";
+    $('admin-view-container').classList.remove('hidden'); $('dept-view-container').classList.add('hidden');
+    renderAdminTable();
+  } else {
+    const dept = state.departments.find(d => d.id === currentUser.deptId);
+    $('user-display-name').textContent = dept.name;
+    $('dept-panel-title').textContent = `${dept.name} 근로시간 입력`;
+    $('dept-view-container').classList.remove('hidden'); $('admin-view-container').classList.add('hidden');
+    populateDeptPanel();
+  }
+  calculateGlobalStats();
+}
+
+function calculateGlobalStats() {
+  let b = 0, p = 0, s = 0;
+  const list = currentUser.role === 'dept' ? state.departments.filter(d => d.id === currentUser.deptId) : state.departments;
+  list.forEach(d => { const c = calc(d); b += c.budget; p += c.pay; s += c.spent; });
+  $('stat-total-budget').textContent = KRW(b);
+  $('stat-monthly-pay').textContent = KRW(p);
+  $('stat-spent-so-far').textContent = KRW(s);
+  $('stat-remaining-balance').textContent = KRW(b - s - p);
+}
+
+function populateDeptPanel() {
+  const dept = state.departments.find(d => d.id === currentUser.deptId);
+  const c = calc(dept);
+  $('dept-hours-input').value = c.hours;
+  $('dept-card-budget').textContent = KRW(c.budget);
+  $('dept-card-spent').textContent = KRW(c.spent);
+  calculateDeptPreview();
+}
+
+function calculateDeptPreview() {
+  const dept = state.departments.find(d => d.id === currentUser.deptId);
+  const h = parseFloat($('dept-hours-input').value) || 0;
+  const pay = h * state.hourlyWage;
+  const c = calc(dept);
+  const bal = c.budget - c.spent - pay;
+  $('dept-card-monthly-pay').textContent = KRW(pay);
+  $('dept-card-balance').textContent = KRW(bal);
+}
+
+function saveDeptHours(e) {
+  e.preventDefault();
+  const h = parseFloat($('dept-hours-input').value) || 0;
+  const dept = state.departments.find(d => d.id === currentUser.deptId);
+  if(!dept.monthlyHours) dept.monthlyHours = {};
+  dept.monthlyHours[state.selectedMonth] = h;
+  saveState(); updateUI();
+  showToast(`${state.selectedMonth} 근무시간이 저장되었습니다.`, "success");
+}
+
+function renderAdminTable() {
+  const tbody = $('admin-table-body'); tbody.innerHTML = '';
+  state.departments.forEach(d => {
+    const c = calc(d);
+    const tr = document.createElement('tr');
+    tr.className = "hover:bg-slate-50 border-b border-slate-100";
+    tr.innerHTML = `
+      <td class="p-3.5 font-bold text-slate-800">${d.name}</td>
+      <td class="p-3.5 text-right font-semibold">${KRW(c.budget)}</td>
+      <td class="p-3.5 text-center text-slate-500">10,320원</td>
+      <td class="p-3.5 text-center font-bold text-blue-600">${c.hours} hr</td>
+      <td class="p-3.5 text-right font-bold text-blue-600">${KRW(c.pay)}</td>
+      <td class="p-3.5 text-right text-slate-600">${KRW(c.spent)}</td>
+      <td class="p-3.5 text-right font-bold ${c.balance < 0 ? 'text-rose-600' : 'text-emerald-600'}">${KRW(c.balance)}</td>
+      <td class="p-3.5 text-center font-bold">${c.pct.toFixed(1)}%</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function resetDataConfirmation() {
+  if (confirm("모든 데이터를 초기화하시겠습니까?")) {
+    initDefaultState(); updateUI(); showToast("초기화되었습니다.");
+  }
+}
+
+window.onload = () => { loadState(); populateDeptSelect(); };
+</script>
+</body>
+</html>
