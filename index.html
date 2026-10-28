@@ -54,7 +54,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans
     <button type="button" id="tab-admin-btn" onclick="switchLoginTab('admin')" class="py-2.5 rounded-lg text-slate-600">총괄 관리자</button>
   </div>
   <form id="dept-login-form" onsubmit="handleDeptLogin(event)" class="space-y-4">
-    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">소속 학과 선택</label>
+    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">소속 학과 선택 (가나다순)</label>
       <select id="login-dept-select" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-slate-50"></select></div>
     <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">비밀번호</label>
       <input type="password" id="login-dept-pw" required placeholder="비밀번호: 1234" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"></div>
@@ -90,7 +90,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans
     <div class="flex items-center gap-3 text-xs">
       <span class="text-slate-500">기준 시급: <strong id="global-hourly-wage-display" class="text-slate-800">10,320원</strong></span>
       <button onclick="fetchFromGoogleSheet()" class="text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200"><i class="fas fa-sync-alt mr-1"></i>시트에서 새로고침</button>
-      <!-- 관리자 전용 초기화 버튼 -->
       <button id="admin-reset-btn" onclick="resetDataConfirmation()" class="hidden text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200"><i class="fas fa-undo-alt mr-1"></i>근무시간 초기화</button>
     </div>
   </div>
@@ -167,7 +166,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
           <thead><tr class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
-            <th class="p-3.5">학과명</th>
+            <th class="p-3.5">학과명 (가나다순)</th>
             <th class="p-3.5 text-right">예산 (C열)</th>
             <th class="p-3.5 text-center">시급 (D열)</th>
             <th class="p-3.5 text-center"><span class="mon-t">9월</span> 근무시간 (E열)</th>
@@ -217,52 +216,54 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans
 
 <script>
 // ⚠️ 본인의 Google Apps Script 배포 URL을 입력해 주세요.
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNiitXzE6V9nARxYiehFfnVNQqSw2rR64lua5okNhz8TmDHuerBAku6dvsasA9UlidZw/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyguWuh4c-cC5uE0b8WQZzJ_kUzgu9KI-KzESRw9Ug8YmuQJ8rPM83JGys5Mn1olniLjw/exec";
 
-const VERSION = 11, STORE_KEY = 'university_work_study_state_v11';
+const VERSION = 12, STORE_KEY = 'university_work_study_state_v12';
 const SEMESTER_MONTHS = ["9월","10월","11월","12월","1월","2월"];
+
+// 기본 학과 목록 (가나다순 정렬 정의)
 const INITIAL_DEPARTMENTS = [
+  {id:"dept_20",name:"건강웰니스학과 사회복지전공",budget:4600000,spent:288960,monthlyHours:{}},
+  {id:"dept_37",name:"건강웰니스학과 반려동물산업전공",budget:2500000,spent:433440,monthlyHours:{}},
+  {id:"dept_33",name:"건강웰니스학과 스포츠재활전공",budget:3800000,spent:1217760,monthlyHours:{}},
+  {id:"dept_12",name:"경영학과 경영정보전공",budget:2200000,spent:0,monthlyHours:{}},
+  {id:"dept_23",name:"경영학과 세무회계전공",budget:1900000,spent:774000,monthlyHours:{}},
   {id:"dept_1",name:"기계공학과 기계공학전공",budget:3800000,spent:536640,monthlyHours:{}},
-  {id:"dept_2",name:"전기공학과 전기공학전공",budget:3800000,spent:701760,monthlyHours:{}},
-  {id:"dept_3",name:"전기공학과 전자공학전공",budget:1900000,spent:350880,monthlyHours:{}},
-  {id:"dept_4",name:"안전소방학과 산업안전전공",budget:1100000,spent:185760,monthlyHours:{}},
-  {id:"dept_5",name:"멀티디자인학과 산업디자인전공",budget:3500000,spent:1228080,monthlyHours:{}},
-  {id:"dept_6",name:"컴퓨터공학과 컴퓨터소프트웨어전공",budget:4600000,spent:835920,monthlyHours:{}},
   {id:"dept_7",name:"기계공학과 소방설비안전전공",budget:2700000,spent:361200,monthlyHours:{}},
-  {id:"dept_8",name:"멀티디자인학과 시각디자인전공",budget:5700000,spent:1393200,monthlyHours:{}},
-  {id:"dept_9",name:"식품영양학과",budget:2700000,spent:485040,monthlyHours:{}},
   {id:"dept_10",name:"글로벌관광학과 호텔관광전공",budget:2700000,spent:464400,monthlyHours:{}},
   {id:"dept_11",name:"글로벌관광학과 일본비즈니스전공",budget:2700000,spent:237360,monthlyHours:{}},
-  {id:"dept_12",name:"경영학과 경영정보전공",budget:2200000,spent:0,monthlyHours:{}},
-  {id:"dept_13",name:"보건의료행정학과",budget:5700000,spent:1124880,monthlyHours:{}},
-  {id:"dept_14",name:"IT정보통신학과 컴퓨터정보통신전공",budget:1300000,spent:61920,monthlyHours:{}},
+  {id:"dept_40",name:"국제협력센터",budget:3300000,spent:0,monthlyHours:{}},
+  {id:"dept_5",name:"멀티디자인학과 산업디자인전공",budget:3500000,spent:1228080,monthlyHours:{}},
+  {id:"dept_8",name:"멀티디자인학과 시각디자인전공",budget:5700000,spent:897840,monthlyHours:{}},
+  {id:"dept_32",name:"반려동물보건학과",budget:2200000,spent:732720,monthlyHours:{}},
   {id:"dept_15",name:"방송미디어학과 애니메이션웹툰전공",budget:5400000,spent:1062960,monthlyHours:{}},
-  {id:"dept_16",name:"생활디자인학과 패션디자인전공",budget:5100000,spent:1444800,monthlyHours:{}},
-  {id:"dept_17",name:"생활디자인학과 실내건축전공",budget:4900000,spent:949440,monthlyHours:{}},
-  {id:"dept_18",name:"컴퓨터공학과 인공지능전공",budget:1900000,spent:319920,monthlyHours:{}},
-  {id:"dept_19",name:"컴퓨터공학과 게임콘텐츠전공",budget:1300000,spent:495360,monthlyHours:{}},
-  {id:"dept_20",name:"건강웰니스학과 사회복지전공",budget:4600000,spent:753360,monthlyHours:{}},
-  {id:"dept_21",name:"호텔외식조리학과 호텔조리전공",budget:3300000,spent:423120,monthlyHours:{}},
-  {id:"dept_22",name:"사회서비스학과 아동보육전공",budget:500000,spent:237360,monthlyHours:{}},
-  {id:"dept_23",name:"경영학과 세무회계전공",budget:1900000,spent:774000,monthlyHours:{}},
   {id:"dept_24",name:"방송미디어학과 광고미디어전공",budget:2200000,spent:278640,monthlyHours:{}},
-  {id:"dept_25",name:"유한생명바이오학과 유한바이오전공",budget:5400000,spent:1279680,monthlyHours:{}},
-  {id:"dept_26",name:"의료뷰티학과 피부메이크업전공",budget:1900000,spent:577920,monthlyHours:{}},
-  {id:"dept_27",name:"의료뷰티학과 뷰티화장품전공",budget:1400000,spent:340560,monthlyHours:{}},
-  {id:"dept_28",name:"호텔외식조리학과 카페베이커리전공",budget:3300000,spent:402480,monthlyHours:{}},
   {id:"dept_29",name:"방송미디어학과 방송영상전공",budget:3000000,spent:743040,monthlyHours:{}},
   {id:"dept_30",name:"방송예술학과 문예창작전공",budget:2500000,spent:660480,monthlyHours:{}},
-  {id:"dept_31",name:"유한생명바이오학과 유한생명회계전공",budget:1400000,spent:0,monthlyHours:{}},
-  {id:"dept_32",name:"반려동물보건학과",budget:2200000,spent:732720,monthlyHours:{}},
-  {id:"dept_33",name:"건강웰니스학과 스포츠재활전공",budget:3800000,spent:1217760,monthlyHours:{}},
-  {id:"dept_34",name:"작업치료과",budget:1700000,spent:227040,monthlyHours:{}},
   {id:"dept_35",name:"방송예술학과 방송연예전공",budget:1800000,spent:495360,monthlyHours:{}},
+  {id:"dept_13",name:"보건의료행정학과",budget:5700000,spent:712080,monthlyHours:{}},
+  {id:"dept_22",name:"사회서비스학과 아동보육전공",budget:500000,spent:237360,monthlyHours:{}},
+  {id:"dept_16",name:"생활디자인학과 패션디자인전공",budget:5100000,spent:1083600,monthlyHours:{}},
+  {id:"dept_17",name:"생활디자인학과 실내건축전공",budget:4900000,spent:949440,monthlyHours:{}},
+  {id:"dept_9",name:"식품영양학과",budget:2700000,spent:485040,monthlyHours:{}},
+  {id:"dept_4",name:"안전소방학과 산업안전전공",budget:1100000,spent:185760,monthlyHours:{}},
+  {id:"dept_41",name:"웰니스PT",budget:6100000,spent:0,monthlyHours:{}},
+  {id:"dept_25",name:"유한생명바이오학과 유한바이오전공",budget:5400000,spent:1279680,monthlyHours:{}},
+  {id:"dept_31",name:"유한생명바이오학과 유한생명회계전공",budget:1400000,spent:0,monthlyHours:{}},
+  {id:"dept_26",name:"의료뷰티학과 피부메이크업전공",budget:1900000,spent:577920,monthlyHours:{}},
+  {id:"dept_27",name:"의료뷰티학과 뷰티화장품전공",budget:1400000,spent:340560,monthlyHours:{}},
   {id:"dept_36",name:"응급구조과",budget:2200000,spent:794640,monthlyHours:{}},
-  {id:"dept_37",name:"건강웰니스학과 반려동물산업전공",budget:2500000,spent:433440,monthlyHours:{}},
-  {id:"dept_38",name:"항공서비스학과",budget:2700000,spent:361200,monthlyHours:{}},
+  {id:"dept_34",name:"작업치료과",budget:1700000,spent:227040,monthlyHours:{}},
+  {id:"dept_2",name:"전기공학과 전기공학전공",budget:3800000,spent:701760,monthlyHours:{}},
+  {id:"dept_3",name:"전기공학과 전자공학전공",budget:1900000,spent:350880,monthlyHours:{}},
   {id:"dept_39",name:"치위생과",budget:900000,spent:103200,monthlyHours:{}},
-  {id:"dept_40",name:"국제협력센터",budget:3300000,spent:0,monthlyHours:{}},
-  {id:"dept_41",name:"웰니스PT",budget:6100000,spent:0,monthlyHours:{}}
+  {id:"dept_6",name:"컴퓨터공학과 컴퓨터소프트웨어전공",budget:4600000,spent:835920,monthlyHours:{}},
+  {id:"dept_18",name:"컴퓨터공학과 인공지능전공",budget:1900000,spent:319920,monthlyHours:{}},
+  {id:"dept_19",name:"컴퓨터공학과 게임콘텐츠전공",budget:1300000,spent:495360,monthlyHours:{}},
+  {id:"dept_38",name:"항공서비스학과",budget:2700000,spent:361200,monthlyHours:{}},
+  {id:"dept_21",name:"호텔외식조리학과 호텔조리전공",budget:3300000,spent:423120,monthlyHours:{}},
+  {id:"dept_28",name:"호텔외식조리학과 카페베이커리전공",budget:3300000,spent:402480,monthlyHours:{}},
+  {id:"dept_14",name:"IT정보통신학과 컴퓨터정보통신전공",budget:1300000,spent:61920,monthlyHours:{}}
 ];
 
 let state = {
@@ -273,6 +274,11 @@ let state = {
   departments: INITIAL_DEPARTMENTS
 };
 let currentUser = null;
+
+// 한글 가나다 오름차순 정렬 함수
+const sortDeptsByName = list => {
+  return list.sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
+};
 
 const parseNum = v => {
   if (v === null || v === undefined) return 0;
@@ -298,7 +304,6 @@ function showSyncing(isSync) {
   $('sync-indicator').classList.toggle('flex', isSync);
 }
 
-// 개별 학과 업데이트 (동시성 덮어쓰기 방지)
 async function syncSingleDeptToGoogleSheet(dept) {
   if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("AKfycbz_XXXXXXXXXXXX")) return;
   showSyncing(true);
@@ -315,7 +320,6 @@ async function syncSingleDeptToGoogleSheet(dept) {
   }
 }
 
-// 전체 학과 동기화 (초기화 또는 학과 신규 추가/삭제 시)
 async function syncAllToGoogleSheet() {
   if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("AKfycbz_XXXXXXXXXXXX")) return;
   showSyncing(true);
@@ -341,7 +345,7 @@ function initDefaultState() {
   state.hourlyWage = 10320;
   state.selectedYear = "2026";
   state.selectedMonth = "9월";
-  state.departments = INITIAL_DEPARTMENTS;
+  state.departments = sortDeptsByName(INITIAL_DEPARTMENTS);
   saveLocalState();
   syncAllToGoogleSheet();
 }
@@ -358,14 +362,14 @@ async function fetchFromGoogleSheet() {
     const data = await res.json();
     
     if (data.status === "success" && data.departments && data.departments.length > 0) {
-      // 구글 시트에서 학과 목록만 가져오되, 필수 설정값(Month, Wage 등)은 유지/보완
-      state.departments = data.departments.map(d => ({
+      const parsed = data.departments.map(d => ({
         id: String(d.id),
         name: String(d.name),
         budget: parseNum(d.budget),
         spent: parseNum(d.spent),
         monthlyHours: d.monthlyHours && typeof d.monthlyHours === 'object' ? d.monthlyHours : {}
       }));
+      state.departments = sortDeptsByName(parsed);
     } else {
       initDefaultState();
     }
@@ -373,7 +377,6 @@ async function fetchFromGoogleSheet() {
     console.error("구글 시트 연동 실패:", e);
     loadLocalState();
   } finally {
-    // 시트에서 데이터를 읽어와도 설정값 결실 방지
     if (!state.selectedMonth) state.selectedMonth = "9월";
     if (!state.hourlyWage) state.hourlyWage = 10320;
     saveLocalState();
@@ -387,6 +390,7 @@ function loadLocalState() {
   try {
     const s = JSON.parse(localStorage.getItem(STORE_KEY));
     if (s && s.version === VERSION && s.departments) {
+      s.departments = sortDeptsByName(s.departments);
       state = s;
       return;
     }
@@ -431,7 +435,10 @@ function switchLoginTab(tab) {
 function populateDeptSelect() {
   const sel = $('login-dept-select'); sel.innerHTML = '';
   if (!state.departments) return;
-  state.departments.forEach(d => {
+  
+  // 가나다순으로 드롭다운 출력
+  const sorted = sortDeptsByName([...state.departments]);
+  sorted.forEach(d => {
     const o = document.createElement('option'); o.value = d.id; o.textContent = d.name; sel.appendChild(o);
   });
 }
@@ -457,7 +464,6 @@ function enterDashboard() {
   $('login-section').classList.add('hidden'); $('dashboard-section').classList.remove('hidden');
   $('logout-btn').classList.remove('hidden'); $('user-badge').classList.remove('hidden');
   
-  // 초기화 버튼 권한 제어 (관리자만 노출)
   if (currentUser.role === 'admin') {
     $('admin-reset-btn').classList.remove('hidden');
   } else {
@@ -534,7 +540,6 @@ function calculateDeptPreview() {
   $('dept-warning-text').classList.toggle('hidden', c.balance >= 0);
 }
 
-// 학과 담당자: 본인 학과만 단일 저장
 function saveDeptHours(e) {
   e.preventDefault();
   const h = parseNum($('dept-hours-input').value);
@@ -544,12 +549,11 @@ function saveDeptHours(e) {
   dept.monthlyHours[state.selectedMonth] = h;
   
   saveLocalState();
-  syncSingleDeptToGoogleSheet(dept); // 해당 학과 행만 수정
+  syncSingleDeptToGoogleSheet(dept);
   updateUI();
   showToast(`${state.selectedMonth} 근무시간이 구글 시트에 저장되었습니다.`, "success");
 }
 
-// 관리자: 신규 학과 추가
 function addNewDepartment(e) {
   e.preventDefault();
   const name = $('add-dept-name').value.trim();
@@ -560,6 +564,7 @@ function addNewDepartment(e) {
 
   const newDept = { id: 'dept_' + Date.now(), name, budget, spent: 0, monthlyHours: {} };
   state.departments.push(newDept);
+  state.departments = sortDeptsByName(state.departments);
   
   saveLocalState();
   syncSingleDeptToGoogleSheet(newDept);
@@ -570,14 +575,14 @@ function addNewDepartment(e) {
   showToast(`[${name}] 학과가 등록되어 구글 시트에 반영됩니다.`, "success");
 }
 
-// 관리자: 학과 삭제
 function deleteDepartment(id) {
   const d = state.departments.find(x => x.id === id); if (!d) return;
   if (!confirm(`정말로 '${d.name}' 학과를 삭제하시겠습니까?`)) return;
   state.departments = state.departments.filter(x => x.id !== id);
+  state.departments = sortDeptsByName(state.departments);
   
   saveLocalState();
-  syncAllToGoogleSheet(); // 삭제 시 전체 동기화
+  syncAllToGoogleSheet();
   populateDeptSelect();
   updateUI();
   showToast(`[${d.name}] 학과가 삭제되었습니다.`);
@@ -600,7 +605,6 @@ function closeEditModal() {
   $('edit-dept-modal').classList.remove('flex');
 }
 
-// 관리자: 개별 학과 예산/지출 정보 수정
 function saveDeptAdminEdit(e) {
   e.preventDefault();
   const id = $('edit-modal-dept-id').value;
@@ -614,7 +618,7 @@ function saveDeptAdminEdit(e) {
   dept.monthlyHours[state.selectedMonth] = hours;
 
   saveLocalState();
-  syncSingleDeptToGoogleSheet(dept); // 해당 학과 행만 수정
+  syncSingleDeptToGoogleSheet(dept);
   closeEditModal();
   updateUI();
   showToast(`[${dept.name}] 정보가 구글 시트에 업데이트되었습니다.`, "success");
@@ -623,7 +627,9 @@ function saveDeptAdminEdit(e) {
 function renderAdminTable() {
   const tbody = $('admin-table-body'); tbody.innerHTML = '';
   const q = ($('dept-search-input').value || '').trim().toLowerCase();
-  const list = state.departments.filter(d => d.name.toLowerCase().includes(q));
+  
+  // 가나다순으로 정렬된 목록 필터링
+  const list = sortDeptsByName(state.departments).filter(d => d.name.toLowerCase().includes(q));
   $('table-dept-count').textContent = list.length;
 
   list.forEach(d => {
@@ -649,7 +655,8 @@ function renderAdminTable() {
 
 function exportToCSV() {
   const rows = [["학과명","배정예산(C)","시급(D)","근무시간(E)","이번달지급액(F)","학기누적지출(G)","잔액(H)"]];
-  state.departments.forEach(d => { const c = calc(d); rows.push([d.name, c.budget, 10320, c.hours, c.pay, c.spent, c.balance]); });
+  const sorted = sortDeptsByName([...state.departments]);
+  sorted.forEach(d => { const c = calc(d); rows.push([d.name, c.budget, 10320, c.hours, c.pay, c.spent, c.balance]); });
   const csv = "\uFEFF" + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
@@ -658,7 +665,6 @@ function exportToCSV() {
   showToast("CSV 다운로드가 시작되었습니다.", "success");
 }
 
-// 관리자 전용 근무시간 초기화 (학과 정보는 삭제하지 않고 근무시간 기록만 초기화)
 function resetDataConfirmation() {
   if (currentUser?.role !== 'admin') {
     return showToast("초기화 권한이 없습니다. (관리자 전용)", "error");
