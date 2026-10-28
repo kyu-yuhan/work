@@ -519,3 +519,27 @@ window.onload = () => { loadState(); switchLoginTab('dept'); populateDeptSelect(
 </script>
 </body>
 </html>
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyBeIJpbjXJF0c6TXzHI9UCBX7KvVsV8k5s",
+    authDomain: "yuhan-work.firebaseapp.com",
+    databaseURL: "https://yuhan-work-default-rtdb.firebaseio.com",
+    projectId: "yuhan-work",
+    storageBucket: "yuhan-work.firebasestorage.app",
+    messagingSenderId: "850524016269",
+    appId: "1:850524016269:web:52e54245088c9fe1365cc4",
+    measurementId: "G-K6KFPHRY04"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
