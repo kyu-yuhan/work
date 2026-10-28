@@ -161,7 +161,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
         <input type="text" id="dept-search-input" oninput="renderAdminTable()" placeholder="학과명 검색..." class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs w-48">
-        <div class="text-xs text-slate-500">총 <strong id="table-dept-count" class="text-slate-800">39</strong>개 학과</div>
+        <div class="text-xs text-slate-500">총 <strong id="table-dept-count" class="text-slate-800">41</strong>개 학과/부서</div>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
@@ -218,55 +218,60 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans
 // ⚠️ 본인의 Google Apps Script 배포 URL로 변경해주세요.
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx6knn-t4piAzWEin8MfgBZhIwFUI_b4ztvH9g5wl603BfaxMh6l2kM3X5-G7BB-nbBrg/exec";
 
-const VERSION = 8, STORE_KEY = 'university_work_study_state_v8';
+const VERSION = 10, STORE_KEY = 'university_work_study_state_v10';
 const SEMESTER_MONTHS = ["9월","10월","11월","12월","1월","2월"];
 const INITIAL_DEPARTMENTS = [
-  {id:"dept_1",name:"기계공학과 기계공학전공",budget:3800000,spent:536640},
-  {id:"dept_2",name:"전기공학과 전기공학전공",budget:3800000,spent:701760},
-  {id:"dept_3",name:"전기공학과 전자공학전공",budget:1900000,spent:350880},
-  {id:"dept_4",name:"안전소방학과 산업안전전공",budget:1100000,spent:185760},
-  {id:"dept_5",name:"멀티디자인학과 산업디자인전공",budget:3500000,spent:1228080},
-  {id:"dept_6",name:"컴퓨터공학과 컴퓨터소프트웨어전공",budget:4600000,spent:835920},
-  {id:"dept_7",name:"기계공학과 소방설비안전전공",budget:2700000,spent:361200},
-  {id:"dept_8",name:"멀티디자인학과 시각디자인전공",budget:5700000,spent:897840},
-  {id:"dept_9",name:"식품영양학과",budget:2700000,spent:485040},
-  {id:"dept_10",name:"글로벌관광학과 호텔관광전공",budget:2700000,spent:464400},
-  {id:"dept_11",name:"글로벌관광학과 일본비즈니스전공",budget:2700000,spent:237360},
-  {id:"dept_12",name:"경영학과 경영정보전공",budget:2200000,spent:0},
-  {id:"dept_13",name:"보건의료행정학과",budget:5700000,spent:712080},
-  {id:"dept_14",name:"IT정보통신학과 컴퓨터정보통신전공",budget:1300000,spent:61920},
-  {id:"dept_15",name:"방송미디어학과 애니메이션웹툰전공",budget:5400000,spent:1062960},
-  {id:"dept_16",name:"생활디자인학과 패션디자인전공",budget:5100000,spent:1083600},
-  {id:"dept_17",name:"생활디자인학과 실내건축전공",budget:4900000,spent:949440},
-  {id:"dept_18",name:"컴퓨터공학과 인공지능전공",budget:1900000,spent:319920},
-  {id:"dept_19",name:"컴퓨터공학과 게임콘텐츠전공",budget:1300000,spent:495360},
-  {id:"dept_20",name:"건강웰니스학과 사회복지전공",budget:4600000,spent:288960},
-  {id:"dept_21",name:"호텔외식조리학과 호텔조리전공",budget:3300000,spent:423120},
-  {id:"dept_22",name:"사회서비스학과 아동보육전공",budget:500000,spent:237360},
-  {id:"dept_23",name:"경영학과 세무회계전공",budget:1900000,spent:774000},
-  {id:"dept_24",name:"방송미디어학과 광고미디어전공",budget:2200000,spent:278640},
-  {id:"dept_25",name:"유한생명바이오학과 유한바이오전공",budget:5400000,spent:1279680},
-  {id:"dept_26",name:"의료뷰티학과 피부메이크업전공",budget:1900000,spent:577920},
-  {id:"dept_27",name:"의료뷰티학과 뷰티화장품전공",budget:1400000,spent:340560},
-  {id:"dept_28",name:"호텔외식조리학과 카페베이커리전공",budget:3300000,spent:402480},
-  {id:"dept_29",name:"방송미디어학과 방송영상전공",budget:3000000,spent:743040},
-  {id:"dept_30",name:"방송예술학과 문예창작전공",budget:2500000,spent:660480},
-  {id:"dept_31",name:"유한생명바이오학과 유한생명회계전공",budget:1400000,spent:0},
-  {id:"dept_32",name:"반려동물보건학과",budget:2200000,spent:732720},
-  {id:"dept_33",name:"건강웰니스학과 스포츠재활전공",budget:3800000,spent:1217760},
-  {id:"dept_34",name:"작업치료과",budget:1700000,spent:227040},
-  {id:"dept_35",name:"방송예술학과 방송연예전공",budget:1800000,spent:495360},
-  {id:"dept_36",name:"응급구조과",budget:2200000,spent:794640},
-  {id:"dept_37",name:"건강웰니스학과 반려동물산업전공",budget:2500000,spent:433440},
-  {id:"dept_38",name:"항공서비스학과",budget:2700000,spent:361200},
-  {id:"dept_39",name:"치위생과",budget:900000,spent:103200}
+  {id:"dept_1",name:"기계공학과 기계공학전공",budget:3800000,spent:536640,monthlyHours:{}},
+  {id:"dept_2",name:"전기공학과 전기공학전공",budget:3800000,spent:701760,monthlyHours:{}},
+  {id:"dept_3",name:"전기공학과 전자공학전공",budget:1900000,spent:350880,monthlyHours:{}},
+  {id:"dept_4",name:"안전소방학과 산업안전전공",budget:1100000,spent:185760,monthlyHours:{}},
+  {id:"dept_5",name:"멀티디자인학과 산업디자인전공",budget:3500000,spent:1228080,monthlyHours:{}},
+  {id:"dept_6",name:"컴퓨터공학과 컴퓨터소프트웨어전공",budget:4600000,spent:835920,monthlyHours:{}},
+  {id:"dept_7",name:"기계공학과 소방설비안전전공",budget:2700000,spent:361200,monthlyHours:{}},
+  {id:"dept_8",name:"멀티디자인학과 시각디자인전공",budget:5700000,spent:1393200,monthlyHours:{}},
+  {id:"dept_9",name:"식품영양학과",budget:2700000,spent:485040,monthlyHours:{}},
+  {id:"dept_10",name:"글로벌관광학과 호텔관광전공",budget:2700000,spent:464400,monthlyHours:{}},
+  {id:"dept_11",name:"글로벌관광학과 일본비즈니스전공",budget:2700000,spent:237360,monthlyHours:{}},
+  {id:"dept_12",name:"경영학과 경영정보전공",budget:2200000,spent:0,monthlyHours:{}},
+  {id:"dept_13",name:"보건의료행정학과",budget:5700000,spent:1124880,monthlyHours:{}},
+  {id:"dept_14",name:"IT정보통신학과 컴퓨터정보통신전공",budget:1300000,spent:61920,monthlyHours:{}},
+  {id:"dept_15",name:"방송미디어학과 애니메이션웹툰전공",budget:5400000,spent:1062960,monthlyHours:{}},
+  {id:"dept_16",name:"생활디자인학과 패션디자인전공",budget:5100000,spent:1444800,monthlyHours:{}},
+  {id:"dept_17",name:"생활디자인학과 실내건축전공",budget:4900000,spent:949440,monthlyHours:{}},
+  {id:"dept_18",name:"컴퓨터공학과 인공지능전공",budget:1900000,spent:319920,monthlyHours:{}},
+  {id:"dept_19",name:"컴퓨터공학과 게임콘텐츠전공",budget:1300000,spent:495360,monthlyHours:{}},
+  {id:"dept_20",name:"건강웰니스학과 사회복지전공",budget:4600000,spent:753360,monthlyHours:{}},
+  {id:"dept_21",name:"호텔외식조리학과 호텔조리전공",budget:3300000,spent:423120,monthlyHours:{}},
+  {id:"dept_22",name:"사회서비스학과 아동보육전공",budget:500000,spent:237360,monthlyHours:{}},
+  {id:"dept_23",name:"경영학과 세무회계전공",budget:1900000,spent:774000,monthlyHours:{}},
+  {id:"dept_24",name:"방송미디어학과 광고미디어전공",budget:2200000,spent:278640,monthlyHours:{}},
+  {id:"dept_25",name:"유한생명바이오학과 유한바이오전공",budget:5400000,spent:1279680,monthlyHours:{}},
+  {id:"dept_26",name:"의료뷰티학과 피부메이크업전공",budget:1900000,spent:577920,monthlyHours:{}},
+  {id:"dept_27",name:"의료뷰티학과 뷰티화장품전공",budget:1400000,spent:340560,monthlyHours:{}},
+  {id:"dept_28",name:"호텔외식조리학과 카페베이커리전공",budget:3300000,spent:402480,monthlyHours:{}},
+  {id:"dept_29",name:"방송미디어학과 방송영상전공",budget:3000000,spent:743040,monthlyHours:{}},
+  {id:"dept_30",name:"방송예술학과 문예창작전공",budget:2500000,spent:660480,monthlyHours:{}},
+  {id:"dept_31",name:"유한생명바이오학과 유한생명회계전공",budget:1400000,spent:0,monthlyHours:{}},
+  {id:"dept_32",name:"반려동물보건학과",budget:2200000,spent:732720,monthlyHours:{}},
+  {id:"dept_33",name:"건강웰니스학과 스포츠재활전공",budget:3800000,spent:1217760,monthlyHours:{}},
+  {id:"dept_34",name:"작업치료과",budget:1700000,spent:227040,monthlyHours:{}},
+  {id:"dept_35",name:"방송예술학과 방송연예전공",budget:1800000,spent:495360,monthlyHours:{}},
+  {id:"dept_36",name:"응급구조과",budget:2200000,spent:794640,monthlyHours:{}},
+  {id:"dept_37",name:"건강웰니스학과 반려동물산업전공",budget:2500000,spent:433440,monthlyHours:{}},
+  {id:"dept_38",name:"항공서비스학과",budget:2700000,spent:361200,monthlyHours:{}},
+  {id:"dept_39",name:"치위생과",budget:900000,spent:103200,monthlyHours:{}},
+  {id:"dept_40",name:"국제협력센터",budget:3300000,spent:0,monthlyHours:{}},
+  {id:"dept_41",name:"웰니스PT",budget:6100000,spent:0,monthlyHours:{}}
 ];
 
 let state = {};
 let currentUser = null;
 
 const parseNum = v => {
-  const n = parseFloat(v);
+  if (v === null || v === undefined) return 0;
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  const str = String(v).replace(/,/g, '').trim();
+  const n = parseFloat(str);
   return isNaN(n) ? 0 : n;
 };
 
@@ -309,11 +314,11 @@ async function fetchFromGoogleSheet() {
     
     if (data.status === "success" && data.departments && data.departments.length > 0) {
       state.departments = data.departments.map(d => ({
-        id: d.id,
-        name: d.name,
+        id: String(d.id),
+        name: String(d.name),
         budget: parseNum(d.budget),
         spent: parseNum(d.spent),
-        monthlyHours: d.monthlyHours || {}
+        monthlyHours: d.monthlyHours && typeof d.monthlyHours === 'object' ? d.monthlyHours : {}
       }));
       localStorage.setItem(STORE_KEY, JSON.stringify(state));
     } else {
@@ -355,19 +360,22 @@ function loadLocalState() {
 }
 
 function calc(dept, overrideHours) {
+  if (!dept) return { budget: 0, hours: 0, pay: 0, spent: 0, balance: 0, pct: 0, baseSpent: 0 };
+  
   const m = state.selectedMonth;
   const budget = parseNum(dept.budget);
   const baseSpent = parseNum(dept.spent);
   const wage = parseNum(state.hourlyWage);
 
-  const rawHours = overrideHours !== undefined ? overrideHours : (dept.monthlyHours?.[m]);
+  const rawHours = overrideHours !== undefined ? overrideHours : (dept.monthlyHours ? dept.monthlyHours[m] : 0);
   const hours = parseNum(rawHours);
   const pay = hours * wage;
   
   let prevPay = 0;
   const currIdx = SEMESTER_MONTHS.indexOf(m);
-  for(let i=0; i<currIdx; i++) {
-    const h = parseNum(dept.monthlyHours?.[SEMESTER_MONTHS[i]]);
+  for(let i = 0; i < currIdx; i++) {
+    const prevMonthName = SEMESTER_MONTHS[i];
+    const h = parseNum(dept.monthlyHours ? dept.monthlyHours[prevMonthName] : 0);
     prevPay += h * wage;
   }
   
@@ -487,6 +495,7 @@ function saveDeptHours(e) {
   e.preventDefault();
   const h = parseNum($('dept-hours-input').value);
   const dept = state.departments.find(d => d.id === currentUser.deptId);
+  if(!dept) return;
   if(!dept.monthlyHours) dept.monthlyHours = {};
   dept.monthlyHours[state.selectedMonth] = h;
   saveState(); updateUI();
