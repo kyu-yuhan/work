@@ -215,10 +215,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans
 </div>
 
 <script>
-// ⚠️ 2단계에서 배포한 본인의 Google Apps Script 웹 앱 URL을 아래에 입력해 주세요.
+// ⚠️ 본인의 Google Apps Script 배포 URL로 변경해주세요.
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx6knn-t4piAzWEin8MfgBZhIwFUI_b4ztvH9g5wl603BfaxMh6l2kM3X5-G7BB-nbBrg/exec";
 
-const VERSION = 7, STORE_KEY = 'university_work_study_state_v7';
+const VERSION = 8, STORE_KEY = 'university_work_study_state_v8';
 const SEMESTER_MONTHS = ["9월","10월","11월","12월","1월","2월"];
 const INITIAL_DEPARTMENTS = [
   {id:"dept_1",name:"기계공학과 기계공학전공",budget:3800000,spent:536640},
@@ -265,7 +265,12 @@ const INITIAL_DEPARTMENTS = [
 let state = {};
 let currentUser = null;
 
-const fmt = n => new Intl.NumberFormat('ko-KR').format(Math.round(n));
+const parseNum = v => {
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+};
+
+const fmt = n => new Intl.NumberFormat('ko-KR').format(Math.round(parseNum(n)));
 const KRW = v => fmt(v) + ' 원';
 const $ = id => document.getElementById(id);
 const setAll = (cls, text) => document.querySelectorAll('.' + cls).forEach(e => e.textContent = text);
@@ -303,10 +308,15 @@ async function fetchFromGoogleSheet() {
     const data = await res.json();
     
     if (data.status === "success" && data.departments && data.departments.length > 0) {
-      state.departments = data.departments;
+      state.departments = data.departments.map(d => ({
+        id: d.id,
+        name: d.name,
+        budget: parseNum(d.budget),
+        spent: parseNum(d.spent),
+        monthlyHours: d.monthlyHours || {}
+      }));
       localStorage.setItem(STORE_KEY, JSON.stringify(state));
     } else {
-      // 구글 시트가 비어있을 경우 초기 데이터 업로드
       initDefaultState();
     }
   } catch(e) {
@@ -346,18 +356,26 @@ function loadLocalState() {
 
 function calc(dept, overrideHours) {
   const m = state.selectedMonth;
-  const hours = overrideHours !== undefined ? overrideHours : (dept.monthlyHours?.[m] || 0);
-  const pay = hours * state.hourlyWage;
+  const budget = parseNum(dept.budget);
+  const baseSpent = parseNum(dept.spent);
+  const wage = parseNum(state.hourlyWage);
+
+  const rawHours = overrideHours !== undefined ? overrideHours : (dept.monthlyHours?.[m]);
+  const hours = parseNum(rawHours);
+  const pay = hours * wage;
   
   let prevPay = 0;
   const currIdx = SEMESTER_MONTHS.indexOf(m);
   for(let i=0; i<currIdx; i++) {
-    prevPay += (dept.monthlyHours?.[SEMESTER_MONTHS[i]] || 0) * state.hourlyWage;
+    const h = parseNum(dept.monthlyHours?.[SEMESTER_MONTHS[i]]);
+    prevPay += h * wage;
   }
-  const spent = (dept.spent || 0) + prevPay;
-  const balance = dept.budget - spent - pay;
-  const pct = dept.budget > 0 ? ((spent + pay) / dept.budget) * 100 : 0;
-  return { budget: dept.budget, hours, pay, spent, balance, pct, baseSpent: dept.spent || 0 };
+  
+  const spent = baseSpent + prevPay;
+  const balance = budget - spent - pay;
+  const pct = budget > 0 ? ((spent + pay) / budget) * 100 : 0;
+  
+  return { budget, hours, pay, spent, balance, pct, baseSpent };
 }
 
 function switchLoginTab(tab) {
@@ -453,7 +471,7 @@ function populateDeptPanel() {
 function calculateDeptPreview() {
   const dept = state.departments.find(d => d.id === currentUser.deptId);
   if(!dept) return;
-  const h = parseFloat($('dept-hours-input').value) || 0;
+  const h = parseNum($('dept-hours-input').value);
   const c = calc(dept, h);
   $('dept-card-monthly-pay').textContent = KRW(c.pay);
   $('dept-card-balance').textContent = KRW(c.balance);
@@ -467,7 +485,7 @@ function calculateDeptPreview() {
 
 function saveDeptHours(e) {
   e.preventDefault();
-  const h = parseFloat($('dept-hours-input').value) || 0;
+  const h = parseNum($('dept-hours-input').value);
   const dept = state.departments.find(d => d.id === currentUser.deptId);
   if(!dept.monthlyHours) dept.monthlyHours = {};
   dept.monthlyHours[state.selectedMonth] = h;
@@ -478,9 +496,9 @@ function saveDeptHours(e) {
 function addNewDepartment(e) {
   e.preventDefault();
   const name = $('add-dept-name').value.trim();
-  const budget = parseInt($('add-dept-budget').value, 10);
+  const budget = parseNum($('add-dept-budget').value);
   if (!name) return showToast("학과명을 입력해 주세요.", "error");
-  if (isNaN(budget) || budget < 0) return showToast("올바른 예산을 입력해 주세요.", "error");
+  if (budget < 0) return showToast("올바른 예산을 입력해 주세요.", "error");
   if (state.departments.some(d => d.name === name)) return showToast("이미 존재하는 학과명입니다.", "error");
 
   const id = 'dept_' + Date.now();
@@ -519,12 +537,10 @@ function saveDeptAdminEdit(e) {
   e.preventDefault();
   const id = $('edit-modal-dept-id').value;
   const dept = state.departments.find(x => x.id === id); if(!dept) return;
-  const budget = parseInt($('edit-modal-budget').value, 10);
-  const spent = parseInt($('edit-modal-spent').value, 10);
-  const hours = parseFloat($('edit-modal-hours').value);
+  const budget = parseNum($('edit-modal-budget').value);
+  const spent = parseNum($('edit-modal-spent').value);
+  const hours = parseNum($('edit-modal-hours').value);
 
-  if ([budget, spent, hours].some(v => isNaN(v) || v < 0)) return showToast("입력값을 확인해 주세요.", "error");
-  
   dept.budget = budget;
   dept.spent = spent;
   if(!dept.monthlyHours) dept.monthlyHours = {};
