@@ -90,7 +90,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans
     <div class="flex items-center gap-3 text-xs">
       <span class="text-slate-500">기준 시급: <strong id="global-hourly-wage-display" class="text-slate-800">10,320원</strong></span>
       <button onclick="fetchFromGoogleSheet()" class="text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200"><i class="fas fa-sync-alt mr-1"></i>시트에서 새로고침</button>
-      <button onclick="resetDataConfirmation()" class="text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200"><i class="fas fa-undo-alt mr-1"></i>데이터 초기화</button>
+      <!-- 관리자 전용 초기화 버튼 -->
+      <button id="admin-reset-btn" onclick="resetDataConfirmation()" class="hidden text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200"><i class="fas fa-undo-alt mr-1"></i>근무시간 초기화</button>
     </div>
   </div>
 
@@ -161,7 +162,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
         <input type="text" id="dept-search-input" oninput="renderAdminTable()" placeholder="학과명 검색..." class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs w-48">
-        <div class="text-xs text-slate-500">총 <strong id="table-dept-count" class="text-slate-800">41</strong>개 학과/부서</div>
+        <div class="text-xs text-slate-500">총 <strong id="table-dept-count" class="text-slate-800">0</strong>개 학과/부서</div>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
@@ -215,10 +216,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans
 </div>
 
 <script>
-// ⚠️ 본인의 Google Apps Script 배포 URL로 변경해주세요.
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx6knn-t4piAzWEin8MfgBZhIwFUI_b4ztvH9g5wl603BfaxMh6l2kM3X5-G7BB-nbBrg/exec";
+// ⚠️ 본인의 Google Apps Script 배포 URL을 입력해 주세요.
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNiitXzE6V9nARxYiehFfnVNQqSw2rR64lua5okNhz8TmDHuerBAku6dvsasA9UlidZw/exec";
 
-const VERSION = 10, STORE_KEY = 'university_work_study_state_v10';
+const VERSION = 11, STORE_KEY = 'university_work_study_state_v11';
 const SEMESTER_MONTHS = ["9월","10월","11월","12월","1월","2월"];
 const INITIAL_DEPARTMENTS = [
   {id:"dept_1",name:"기계공학과 기계공학전공",budget:3800000,spent:536640,monthlyHours:{}},
@@ -264,7 +265,13 @@ const INITIAL_DEPARTMENTS = [
   {id:"dept_41",name:"웰니스PT",budget:6100000,spent:0,monthlyHours:{}}
 ];
 
-let state = {};
+let state = {
+  version: VERSION,
+  hourlyWage: 10320,
+  selectedYear: "2026",
+  selectedMonth: "9월",
+  departments: INITIAL_DEPARTMENTS
+};
 let currentUser = null;
 
 const parseNum = v => {
@@ -291,14 +298,52 @@ function showSyncing(isSync) {
   $('sync-indicator').classList.toggle('flex', isSync);
 }
 
-function saveState() {
+// 개별 학과 업데이트 (동시성 덮어쓰기 방지)
+async function syncSingleDeptToGoogleSheet(dept) {
+  if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("AKfycbz_XXXXXXXXXXXX")) return;
+  showSyncing(true);
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "updateDept", department: dept })
+    });
+  } catch(e) {
+    console.error("단일 학과 저장 실패:", e);
+  } finally {
+    showSyncing(false);
+  }
+}
+
+// 전체 학과 동기화 (초기화 또는 학과 신규 추가/삭제 시)
+async function syncAllToGoogleSheet() {
+  if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("AKfycbz_XXXXXXXXXXXX")) return;
+  showSyncing(true);
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "syncAll", departments: state.departments })
+    });
+  } catch(e) {
+    console.error("전체 저장 실패:", e);
+  } finally {
+    showSyncing(false);
+  }
+}
+
+function saveLocalState() {
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
-  syncToGoogleSheet();
 }
 
 function initDefaultState() {
-  state = { version: VERSION, hourlyWage: 10320, selectedYear: "2026", selectedMonth: "9월", departments: INITIAL_DEPARTMENTS };
-  saveState();
+  state.version = VERSION;
+  state.hourlyWage = 10320;
+  state.selectedYear = "2026";
+  state.selectedMonth = "9월";
+  state.departments = INITIAL_DEPARTMENTS;
+  saveLocalState();
+  syncAllToGoogleSheet();
 }
 
 async function fetchFromGoogleSheet() {
@@ -313,6 +358,7 @@ async function fetchFromGoogleSheet() {
     const data = await res.json();
     
     if (data.status === "success" && data.departments && data.departments.length > 0) {
+      // 구글 시트에서 학과 목록만 가져오되, 필수 설정값(Month, Wage 등)은 유지/보완
       state.departments = data.departments.map(d => ({
         id: String(d.id),
         name: String(d.name),
@@ -320,7 +366,6 @@ async function fetchFromGoogleSheet() {
         spent: parseNum(d.spent),
         monthlyHours: d.monthlyHours && typeof d.monthlyHours === 'object' ? d.monthlyHours : {}
       }));
-      localStorage.setItem(STORE_KEY, JSON.stringify(state));
     } else {
       initDefaultState();
     }
@@ -328,44 +373,34 @@ async function fetchFromGoogleSheet() {
     console.error("구글 시트 연동 실패:", e);
     loadLocalState();
   } finally {
+    // 시트에서 데이터를 읽어와도 설정값 결실 방지
+    if (!state.selectedMonth) state.selectedMonth = "9월";
+    if (!state.hourlyWage) state.hourlyWage = 10320;
+    saveLocalState();
     showSyncing(false);
     populateDeptSelect();
     updateUI();
   }
 }
 
-async function syncToGoogleSheet() {
-  if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("AKfycbz_XXXXXXXXXXXX")) return;
-  
-  showSyncing(true);
-  try {
-    await fetch(GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "syncAll", departments: state.departments })
-    });
-  } catch(e) {
-    console.error("구글 시트 저장 실패:", e);
-  } finally {
-    showSyncing(false);
-  }
-}
-
 function loadLocalState() {
   try {
     const s = JSON.parse(localStorage.getItem(STORE_KEY));
-    if (s && s.version === VERSION) { state = s; return; }
+    if (s && s.version === VERSION && s.departments) {
+      state = s;
+      return;
+    }
   } catch(e) {}
-  state = { version: VERSION, hourlyWage: 10320, selectedYear: "2026", selectedMonth: "9월", departments: INITIAL_DEPARTMENTS };
+  initDefaultState();
 }
 
 function calc(dept, overrideHours) {
   if (!dept) return { budget: 0, hours: 0, pay: 0, spent: 0, balance: 0, pct: 0, baseSpent: 0 };
   
-  const m = state.selectedMonth;
+  const m = state.selectedMonth || "9월";
   const budget = parseNum(dept.budget);
   const baseSpent = parseNum(dept.spent);
-  const wage = parseNum(state.hourlyWage);
+  const wage = parseNum(state.hourlyWage || 10320);
 
   const rawHours = overrideHours !== undefined ? overrideHours : (dept.monthlyHours ? dept.monthlyHours[m] : 0);
   const hours = parseNum(rawHours);
@@ -421,6 +456,14 @@ function handleAdminLogin(e) {
 function enterDashboard() {
   $('login-section').classList.add('hidden'); $('dashboard-section').classList.remove('hidden');
   $('logout-btn').classList.remove('hidden'); $('user-badge').classList.remove('hidden');
+  
+  // 초기화 버튼 권한 제어 (관리자만 노출)
+  if (currentUser.role === 'admin') {
+    $('admin-reset-btn').classList.remove('hidden');
+  } else {
+    $('admin-reset-btn').classList.add('hidden');
+  }
+  
   updateUI();
 }
 
@@ -431,11 +474,11 @@ function logout() {
   showToast("로그아웃되었습니다.");
 }
 
-function changeYear(v) { state.selectedYear = v; saveState(); updateUI(); }
-function changeMonth(v) { state.selectedMonth = v; saveState(); updateUI(); }
+function changeYear(v) { state.selectedYear = v; saveLocalState(); updateUI(); }
+function changeMonth(v) { state.selectedMonth = v; saveLocalState(); updateUI(); }
 
 function updateUI() {
-  setAll('mon-t', state.selectedMonth);
+  setAll('mon-t', state.selectedMonth || "9월");
   if (!currentUser) return;
 
   const pill = $('role-pill');
@@ -491,6 +534,7 @@ function calculateDeptPreview() {
   $('dept-warning-text').classList.toggle('hidden', c.balance >= 0);
 }
 
+// 학과 담당자: 본인 학과만 단일 저장
 function saveDeptHours(e) {
   e.preventDefault();
   const h = parseNum($('dept-hours-input').value);
@@ -498,10 +542,14 @@ function saveDeptHours(e) {
   if(!dept) return;
   if(!dept.monthlyHours) dept.monthlyHours = {};
   dept.monthlyHours[state.selectedMonth] = h;
-  saveState(); updateUI();
+  
+  saveLocalState();
+  syncSingleDeptToGoogleSheet(dept); // 해당 학과 행만 수정
+  updateUI();
   showToast(`${state.selectedMonth} 근무시간이 구글 시트에 저장되었습니다.`, "success");
 }
 
+// 관리자: 신규 학과 추가
 function addNewDepartment(e) {
   e.preventDefault();
   const name = $('add-dept-name').value.trim();
@@ -510,18 +558,28 @@ function addNewDepartment(e) {
   if (budget < 0) return showToast("올바른 예산을 입력해 주세요.", "error");
   if (state.departments.some(d => d.name === name)) return showToast("이미 존재하는 학과명입니다.", "error");
 
-  const id = 'dept_' + Date.now();
-  state.departments.push({ id, name, budget, spent: 0, monthlyHours: {} });
-  saveState(); populateDeptSelect(); updateUI();
+  const newDept = { id: 'dept_' + Date.now(), name, budget, spent: 0, monthlyHours: {} };
+  state.departments.push(newDept);
+  
+  saveLocalState();
+  syncSingleDeptToGoogleSheet(newDept);
+  populateDeptSelect();
+  updateUI();
+  
   $('add-dept-name').value = ''; $('add-dept-budget').value = '';
   showToast(`[${name}] 학과가 등록되어 구글 시트에 반영됩니다.`, "success");
 }
 
+// 관리자: 학과 삭제
 function deleteDepartment(id) {
   const d = state.departments.find(x => x.id === id); if (!d) return;
   if (!confirm(`정말로 '${d.name}' 학과를 삭제하시겠습니까?`)) return;
   state.departments = state.departments.filter(x => x.id !== id);
-  saveState(); populateDeptSelect(); updateUI();
+  
+  saveLocalState();
+  syncAllToGoogleSheet(); // 삭제 시 전체 동기화
+  populateDeptSelect();
+  updateUI();
   showToast(`[${d.name}] 학과가 삭제되었습니다.`);
 }
 
@@ -542,20 +600,23 @@ function closeEditModal() {
   $('edit-dept-modal').classList.remove('flex');
 }
 
+// 관리자: 개별 학과 예산/지출 정보 수정
 function saveDeptAdminEdit(e) {
   e.preventDefault();
   const id = $('edit-modal-dept-id').value;
   const dept = state.departments.find(x => x.id === id); if(!dept) return;
-  const budget = parseNum($('edit-modal-budget').value);
-  const spent = parseNum($('edit-modal-spent').value);
+  
+  dept.budget = parseNum($('edit-modal-budget').value);
+  dept.spent = parseNum($('edit-modal-spent').value);
   const hours = parseNum($('edit-modal-hours').value);
 
-  dept.budget = budget;
-  dept.spent = spent;
   if(!dept.monthlyHours) dept.monthlyHours = {};
   dept.monthlyHours[state.selectedMonth] = hours;
 
-  saveState(); closeEditModal(); updateUI();
+  saveLocalState();
+  syncSingleDeptToGoogleSheet(dept); // 해당 학과 행만 수정
+  closeEditModal();
+  updateUI();
   showToast(`[${dept.name}] 정보가 구글 시트에 업데이트되었습니다.`, "success");
 }
 
@@ -597,9 +658,17 @@ function exportToCSV() {
   showToast("CSV 다운로드가 시작되었습니다.", "success");
 }
 
+// 관리자 전용 근무시간 초기화 (학과 정보는 삭제하지 않고 근무시간 기록만 초기화)
 function resetDataConfirmation() {
-  if (confirm("모든 데이터를 초기 상태로 되돌리시겠습니까? 구글 시트의 데이터도 초기화됩니다.")) {
-    initDefaultState(); populateDeptSelect(); updateUI(); showToast("모든 데이터가 초기화되었습니다.");
+  if (currentUser?.role !== 'admin') {
+    return showToast("초기화 권한이 없습니다. (관리자 전용)", "error");
+  }
+  if (confirm("모든 학과의 월별 근무시간 기록을 초기화하시겠습니까? (학과 및 예산 정보는 유지됩니다)")) {
+    state.departments.forEach(d => { d.monthlyHours = {}; });
+    saveLocalState();
+    syncAllToGoogleSheet();
+    updateUI();
+    showToast("모든 학과의 근무시간이 초기화되었습니다.");
   }
 }
 
